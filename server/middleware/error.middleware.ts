@@ -23,7 +23,7 @@ export const errorHandler: ErrorRequestHandler = (
 ): void => {
   if (err instanceof AppError) {
     res.status(err.statusCode).json({
-      status: err.status,
+      success: false,
       message: err.message,
     });
     return;
@@ -32,7 +32,7 @@ export const errorHandler: ErrorRequestHandler = (
   // Programming or other unknown error
   console.error('ERROR 💥', err);
   res.status(500).json({
-    status: 'error',
+    success: false,
     message: 'Something went wrong!',
   });
 }; 

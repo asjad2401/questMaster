@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { Test, TestResult } from '../db/models';
 import { AppError } from '../middleware/error.middleware';
 import { catchAsync } from '../utils/catchAsync';
+import { runInTransaction } from '../utils/transactions';
 
 export const createTest = async (
   req: Request,
@@ -9,8 +10,30 @@ export const createTest = async (
   next: NextFunction
 ) => {
   try {
-    const test = await Test.create({
+    // Map over the questions to sanitize any potential issues
+    const sanitizedData = {
       ...req.body,
+      questions: req.body.questions.map((question: any) => {
+        // Ensure the correctAnswer is properly formatted
+        // If it's a numeric string like "0" or "1", convert it to the actual option value
+        const correctAnswerIndex = parseInt(question.correctAnswer, 10);
+        
+        // Check if correctAnswer is a valid index
+        if (!isNaN(correctAnswerIndex) && correctAnswerIndex >= 0 && correctAnswerIndex < question.options.length) {
+          // Use the option at that index
+          return {
+            ...question,
+            correctAnswer: question.options[correctAnswerIndex]
+          };
+        }
+        
+        // Otherwise keep as is (might already be the actual option)
+        return question;
+      })
+    };
+
+    const test = await Test.create({
+      ...sanitizedData,
       createdBy: req.user._id,
     });
 
@@ -21,6 +44,7 @@ export const createTest = async (
       },
     });
   } catch (error) {
+    console.error('Test creation error:', error);
     next(error);
   }
 };
@@ -163,6 +187,18 @@ export const updateTest = catchAsync(async (req: Request, res: Response) => {
   // Check if the user is the creator of the test or an admin
   if (req.user.role !== 'admin' && test.createdBy.toString() !== req.user._id.toString()) {
     throw new AppError('You do not have permission to update this test', 403);
+  }
+  
+  // Validate totalMarks and passingMarks relationship
+  if (req.body.passingMarks && req.body.totalMarks) {
+    if (req.body.passingMarks > req.body.totalMarks) {
+      throw new AppError('Passing marks cannot exceed total marks', 400);
+    }
+  } else if (req.body.passingMarks && !req.body.totalMarks) {
+    // If updating only passingMarks, check against existing totalMarks
+    if (req.body.passingMarks > test.totalMarks) {
+      throw new AppError('Passing marks cannot exceed total marks', 400);
+    }
   }
   
   const updatedTest = await Test.findByIdAndUpdate(

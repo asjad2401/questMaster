@@ -13,7 +13,7 @@ export function Layout({ children, title, description }: LayoutProps) {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
       <Navbar />
-      <main className="exam-container py-8">
+      <main className="exam-container py-8 pt-20">
         {title && (
           <SlideInLeft className="mb-8">
             <motion.h1 

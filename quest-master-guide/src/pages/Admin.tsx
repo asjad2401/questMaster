@@ -620,7 +620,7 @@ const Admin = () => {
                           <Users className="h-4 w-4 text-muted-foreground dark:text-gray-400" />
                         </CardHeader>
                         <CardContent>
-                          <div className="text-2xl font-bold dark:text-white">{stats.activeStudents}</div>
+                          <div className="text-2xl font-bold dark:text-white">{stats.totalStudents}</div>
                         </CardContent>
                       </Card>
                     </StaggerItem>

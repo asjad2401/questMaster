@@ -16,6 +16,7 @@ export interface ITestResult extends Document {
   status: 'completed' | 'incomplete' | 'abandoned';
   createdAt: Date;
   updatedAt: Date;
+  expiresAt?: Date; // Optional TTL field for automatic document expiration
 }
 
 const testResultSchema = new mongoose.Schema({
@@ -61,8 +62,23 @@ const testResultSchema = new mongoose.Schema({
     enum: ['completed', 'incomplete', 'abandoned'],
     default: 'completed',
   },
+  expiresAt: {
+    type: Date,
+    default: () => {
+      const date = new Date();
+      date.setFullYear(date.getFullYear() + 1); // Expire after 1 year by default
+      return date;
+    },
+    index: { expires: 0 } // TTL index - documents will be removed when current date > expiresAt
+  }
 }, {
   timestamps: true,
 });
+
+// Create compound indexes for optimized queries
+testResultSchema.index({ student: 1, test: 1 }); // Fast lookup of student's test results
+testResultSchema.index({ student: 1, createdAt: -1 }); // Fast history queries
+testResultSchema.index({ test: 1, score: -1 }); // Fast leaderboard queries
+testResultSchema.index({ status: 1, startTime: -1 }); // Fast queries for incomplete tests
 
 export const TestResult = mongoose.model<ITestResult>('TestResult', testResultSchema); 

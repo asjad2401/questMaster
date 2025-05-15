@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { User, Test, TestResult } from '../db/models';
 import { catchAsync } from '../utils/catchAsync';
 import { AppError } from '../middleware/error.middleware';
+import { getCategoryPerformance, getTimeAnalysis, getRecommendedResources } from '../utils/aggregations';
 
 export const getStudents = catchAsync(async (req: Request, res: Response) => {
   // Get all students with their basic info
@@ -122,25 +123,31 @@ export const getAdminStats = catchAsync(async (req: Request, res: Response) => {
 });
 
 export const getUserPerformance = catchAsync(async (req: Request, res: Response) => {
-  // Get user's test results with populated test data
-  const testResults = await TestResult.find({ student: req.user._id })
-    .populate({
-      path: 'test',
-      select: 'title questions',
-      populate: {
-        path: 'questions',
-        select: 'category'
-      }
-    })
-    .sort('-createdAt') as any;
-
-  // Calculate overall statistics
-  const testsAttempted = testResults.length;
-  const averageScore = testsAttempted > 0
-    ? testResults.reduce((acc, result) => acc + result.score, 0) / testsAttempted
+  // Using our advanced aggregation pipeline utility
+  const [categoryPerformance, timeAnalysis, recommendedResources] = await Promise.all([
+    getCategoryPerformance(req.user._id),
+    getTimeAnalysis(req.user._id),
+    getRecommendedResources(req.user._id, 3)
+  ]);
+  
+  // Calculate overall statistics from the detailed category performance
+  const testsAttempted = await TestResult.countDocuments({ student: req.user._id });
+  
+  // Calculate average score across all categories
+  const totalQuestionsAnswered = categoryPerformance.reduce((acc, cat) => acc + cat.totalQuestions, 0);
+  const totalCorrectAnswers = categoryPerformance.reduce((acc, cat) => acc + cat.correctAnswers, 0);
+  const averageScore = totalQuestionsAnswered > 0
+    ? Math.round((totalCorrectAnswers / totalQuestionsAnswered) * 100)
     : 0;
-
+  
+  // Format category performance for the expected response format
+  const formattedCategoryPerformance = categoryPerformance.map(category => ({
+    category: category.category,
+    score: Math.round(category.avgScore)
+  }));
+  
   // Calculate time spent
+  const testResults = await TestResult.find({ student: req.user._id });
   const totalTimeSpent = testResults.reduce((acc, result) => {
     const duration = new Date(result.endTime).getTime() - new Date(result.startTime).getTime();
     return acc + duration;
@@ -149,78 +156,39 @@ export const getUserPerformance = catchAsync(async (req: Request, res: Response)
   const minutes = Math.floor((totalTimeSpent % (1000 * 60 * 60)) / (1000 * 60));
   const timeSpent = `${hours}h ${minutes}m`;
 
-  // Calculate category-wise performance
-  const categoryScores = new Map<string, { total: number; count: number }>();
+  // Sort categories to identify strengths and weaknesses
+  const sortedCategories = [...formattedCategoryPerformance].sort((a, b) => b.score - a.score);
   
-  testResults.forEach(result => {
-    if (result.test && typeof result.test === 'object') {
-      result.answers.forEach((answer, index) => {
-      if (result.test.questions && Array.isArray(result.test.questions) && 
-            index < result.test.questions.length && 
-            result.test.questions[index]) {
-          const question = result.test.questions[index];
-          const category = question.category || 'Uncategorized';
-          if (!categoryScores.has(category)) {
-            categoryScores.set(category, { total: 0, count: 0 });
-          }
-          const current = categoryScores.get(category)!;
-          current.total += answer.isCorrect ? 100 : 0;
-          current.count += 1;
-        }
-      });
-    }
-  });
-
-  const categoryPerformance = Array.from(categoryScores.entries()).map(([category, { total, count }]) => ({
-    category,
-    score: Math.round(total / count)
-  }));
-
-  // Sort categories by score to identify strong and weak subjects
-  const sortedCategories = [...categoryPerformance].sort((a, b) => b.score - a.score);
-  
-  // Get topics with 100% accuracy for strength
+  // Get top 2 strongest subjects (with fallback logic if there aren't enough categories)
   const strongSubjects = sortedCategories.filter(cat => cat.score === 100).slice(0, 2).map(cat => cat.category);
-  
-  // If there aren't enough 100% topics, add the next best ones
   if (strongSubjects.length < 2) {
     const additionalStrong = sortedCategories
       .filter(cat => cat.score < 100)
       .slice(0, 2 - strongSubjects.length)
       .map(cat => cat.category);
-    
     strongSubjects.push(...additionalStrong);
   }
   
-  // Only include topics with score < 100% as weak subjects
+  // Get weak subjects (only where score < 100%)
   const weakCategories = sortedCategories.filter(cat => cat.score < 100);
-  
-  // Take the 2 lowest scoring topics as weak subjects, but only if they have score < 100%
   const weakSubjects = weakCategories.length > 0 
     ? weakCategories.slice(-Math.min(2, weakCategories.length)).map(cat => cat.category)
-    : []; // Empty array if all categories have 100% score
-
-  // Format recent tests
-  const recentTests = testResults.slice(0, 5).map(result => ({
-    id: result._id ? result._id.toString() : '',
-    name: result.test && typeof result.test === 'object' && 'title' in result.test ? 
-      result.test.title : 'Unknown Test',
-    score: result.score,
-    date: result.createdAt
-  }));
-
+    : [];
+  
+  // Return the response in the same format as before
   res.status(200).json({
     status: 'success',
     data: {
-      name: req.user.name,
       testsAttempted,
-      averageScore: Math.round(averageScore),
+      averageScore,
       timeSpent,
+      categoryPerformance: formattedCategoryPerformance,
       strongSubjects,
       weakSubjects,
-      recentTests,
-      categoryPerformance
-    }
+      timeAnalysis,
+      // New data that can be used by the frontend if needed
+      recommendedResources
+    },
   });
 });
 

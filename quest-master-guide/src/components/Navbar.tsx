@@ -26,6 +26,7 @@ interface UserData {
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [userData, setUserData] = useState<UserData | null>(null);
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -42,6 +43,14 @@ const Navbar = () => {
     };
 
     fetchUserData();
+
+    // Add scroll event listener to detect when page is scrolled
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 10);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   const getInitials = (name: string) => {
@@ -86,7 +95,7 @@ const Navbar = () => {
 
   return (
     <motion.nav 
-      className="bg-exam-primary text-white shadow-md"
+      className={`bg-exam-primary text-white ${scrolled ? 'shadow-lg' : 'shadow-md'} fixed top-0 left-0 right-0 w-full z-50 transition-all duration-200`}
       initial="hidden"
       animate="visible"
       variants={navVariants}
