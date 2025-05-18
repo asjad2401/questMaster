@@ -775,7 +775,11 @@ const Admin = () => {
                                     <Input 
                                       type="number" 
                                       className="dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400" 
-                                      {...field} 
+                                      onChange={e => field.onChange(Number(e.target.value))}
+                                      onBlur={field.onBlur}
+                                      value={field.value}
+                                      name={field.name}
+                                      ref={field.ref}
                                     />
                                   </FormControl>
                                   <FormMessage className="dark:text-red-400" />
@@ -792,7 +796,11 @@ const Admin = () => {
                                     <Input 
                                       type="number" 
                                       className="dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400" 
-                                      {...field} 
+                                      onChange={e => field.onChange(Number(e.target.value))}
+                                      onBlur={field.onBlur}
+                                      value={field.value}
+                                      name={field.name}
+                                      ref={field.ref}
                                     />
                                   </FormControl>
                                   <FormMessage className="dark:text-red-400" />
@@ -809,7 +817,11 @@ const Admin = () => {
                                     <Input 
                                       type="number" 
                                       className="dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400" 
-                                      {...field} 
+                                      onChange={e => field.onChange(Number(e.target.value))}
+                                      onBlur={field.onBlur}
+                                      value={field.value}
+                                      name={field.name}
+                                      ref={field.ref}
                                     />
                                   </FormControl>
                                   <FormMessage className="dark:text-red-400" />

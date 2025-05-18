@@ -26,6 +26,7 @@ export interface TimeAnalysis {
     medium: number;
     hard: number;
   };
+  timeByCategory?: Record<string, number>;
 }
 
 /**
@@ -300,7 +301,6 @@ export const getTimeAnalysis = async (studentId: mongoose.Types.ObjectId): Promi
   ]);
   
   // Process to find fastest/slowest categories
-  // This part needs to be done in application code since it requires more complex analysis
   let result: TimeAnalysis = {
     averageTimePerQuestion: 0,
     fastestCategory: 'None',
@@ -317,10 +317,38 @@ export const getTimeAnalysis = async (studentId: mongoose.Types.ObjectId): Promi
     result.averageTimePerQuestion = timeData.averageTimePerQuestion;
     result.timeByDifficulty = timeData.timeByDifficulty;
     
-    // Additional processing for fastest/slowest categories would be done here
-    // For now, we use placeholder values
-    result.fastestCategory = 'Math'; // Placeholder
-    result.slowestCategory = 'History'; // Placeholder
+    // Process category times from the aggregation results
+    const categoryTimes: Record<string, number> = {};
+    
+    // If categoryTimes data is available, process it
+    if (timeData.categoryTimes && Array.isArray(timeData.categoryTimes)) {
+      timeData.categoryTimes.forEach((item: any) => {
+        if (item.k && Array.isArray(item.k)) {
+          item.k.forEach((category: string) => {
+            if (!categoryTimes[category]) {
+              categoryTimes[category] = 0;
+            }
+            categoryTimes[category] += item.v || 0;
+          });
+        }
+      });
+      
+      // Find fastest and slowest categories
+      if (Object.keys(categoryTimes).length > 0) {
+        result.timeByCategory = categoryTimes;
+        const categories = Object.entries(categoryTimes);
+        categories.sort((a, b) => a[1] - b[1]);
+        
+        result.fastestCategory = categories[0][0];
+        result.slowestCategory = categories[categories.length - 1][0];
+      } else {
+        result.fastestCategory = 'N/A';
+        result.slowestCategory = 'N/A';
+      }
+    } else {
+      result.fastestCategory = 'N/A';
+      result.slowestCategory = 'N/A';
+    }
   }
   
   return result;

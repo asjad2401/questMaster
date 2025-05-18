@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="64" height="64">
+  <!-- Book cover -->
+  <rect x="2" y="2" width="20" height="20" rx="2" ry="2" fill="#1e293b" />
+  <!-- Book pages -->
+  <rect x="6" y="4" width="16" height="16" rx="1" ry="1" fill="#334155" />
+  <!-- Book spine details -->
+  <line x1="6" y1="4" x2="6" y2="20" stroke="#0f172a" stroke-width="1" />
+  <!-- Page details -->
+  <line x1="10" y1="8" x2="20" y2="8" stroke="#475569" stroke-width="1" />
+  <line x1="10" y1="12" x2="20" y2="12" stroke="#475569" stroke-width="1" />
+  <line x1="10" y1="16" x2="20" y2="16" stroke="#475569" stroke-width="1" />
+  <!-- Bookmark -->
+  <path d="M16,4 L16,8 L14,6 L12,8 L12,4 Z" fill="#64748b" />
+</svg> 

@@ -145,7 +145,7 @@ export const getUserPerformance = catchAsync(async (req: Request, res: Response)
     category: category.category,
     score: Math.round(category.avgScore)
   }));
-  
+
   // Calculate time spent
   const testResults = await TestResult.find({ student: req.user._id });
   const totalTimeSpent = testResults.reduce((acc, result) => {
@@ -158,7 +158,7 @@ export const getUserPerformance = catchAsync(async (req: Request, res: Response)
 
   // Sort categories to identify strengths and weaknesses
   const sortedCategories = [...formattedCategoryPerformance].sort((a, b) => b.score - a.score);
-  
+
   // Get top 2 strongest subjects (with fallback logic if there aren't enough categories)
   const strongSubjects = sortedCategories.filter(cat => cat.score === 100).slice(0, 2).map(cat => cat.category);
   if (strongSubjects.length < 2) {
